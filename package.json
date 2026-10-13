@@ -1,0 +1,28 @@
+{
+  "name": "grove-quiz",
+  "version": "1.0.0",
+  "description": "Grove: host live multiplayer quizzes. Players join from their phones with a QR code or room code.",
+  "type": "module",
+  "main": "src/server.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js && node --check src/game.js && node --check src/rooms.js && node --check src/realtime.js && for f in public/js/*.js; do node --check \"$f\" || exit 1; done",
+    "test": "node --test test/*.test.js",
+    "test:e2e": "python3 test/e2e.py",
+    "bots": "node test/bots.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.22.3",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

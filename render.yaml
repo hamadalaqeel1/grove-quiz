@@ -1,0 +1,14 @@
+# One-click deploy on Render (https://render.com): New > Blueprint > pick this repo.
+# Grove keeps rooms in memory, so it must run as exactly one instance.
+services:
+  - type: web
+    name: grove-quiz
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /healthz
+    numInstances: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
