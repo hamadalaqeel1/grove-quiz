@@ -2,6 +2,7 @@
 // tailored view of the room to the host and to every player.
 import { ROOM_CODE_PATTERN, normalizeRoomCode, validateQuiz } from '../public/js/rules.js';
 import { summarize } from './game.js';
+import { liveCounts } from './stats.js';
 
 const BROADCAST_COALESCE_MS = 120;
 const RATE_WINDOW_MS = 2000;
@@ -102,9 +103,11 @@ function meView(room, player, rankEntry) {
   return me;
 }
 
-export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date.now(), sweepIntervalMs = 60_000 } = {}) {
+export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date.now(), sweepIntervalMs = 60_000, stats = null } = {}) {
   const timers = new Map();
   const pending = new Map();
+  const track = (event) => stats?.record(event);
+  const trackPeak = () => stats?.observePlayersOnline(liveCounts(manager).playersOnline);
 
   function clearTimer(code) {
     const t = timers.get(code);
@@ -296,6 +299,7 @@ export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date
       if (!room) return reply(ack, { ok: false, error: 'server_full' });
       detach(socket);
       bindHost(socket, room);
+      track('roomCreated');
       reply(ack, { ok: true, code: room.code, hostToken: room.hostToken, joinUrl: room.joinUrl });
       broadcast(room);
     });
@@ -319,7 +323,10 @@ export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date
       switch (payload.type) {
         case 'start':
           result = room.startQuestion(t);
-          if (result.ok) scheduleLock(room);
+          if (result.ok) {
+            scheduleLock(room);
+            if (room.qIndex === 0) track('gameStarted');
+          }
           break;
         case 'end_question':
           clearTimer(room.code);
@@ -333,6 +340,7 @@ export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date
           break;
         case 'finish':
           result = room.finish(t);
+          if (result.ok) track('gameFinished');
           break;
         case 'lock':
           result = room.setLocked(Boolean(payload.locked));
@@ -379,6 +387,8 @@ export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date
       if (!result.ok) return reply(ack, result);
       detach(socket);
       bindPlayer(socket, room, result.player);
+      track('playerJoined');
+      trackPeak();
       reply(ack, {
         ok: true,
         code: room.code,
@@ -398,6 +408,7 @@ export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date
       if (socket.data.playerId !== player.id) detach(socket);
       bindPlayer(socket, room, player);
       room.touch(now());
+      trackPeak();
       reply(ack, { ok: true, code: room.code, playerId: player.id, name: player.name });
       broadcast(room, { immediate: false });
       flushOne(room, player);
@@ -409,6 +420,7 @@ export function attachRealtime(io, manager, { baseUrlForSocket, now = () => Date
       const result = room.submitAnswer(player.id, Number(payload.qIndex), Number(payload.choice), now());
       reply(ack, result);
       if (!result.ok) return;
+      track('answer');
       if (room.allConnectedAnswered()) lockNow(room, 'all_answered');
       else broadcast(room, { immediate: false });
     });

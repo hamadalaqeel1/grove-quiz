@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "check": "node --check src/server.js && node --check src/game.js && node --check src/rooms.js && node --check src/realtime.js && for f in public/js/*.js; do node --check \"$f\" || exit 1; done",
+    "check": "node --check src/server.js && node --check src/game.js && node --check src/rooms.js && node --check src/realtime.js && node --check src/stats.js && for f in public/js/*.js; do node --check \"$f\" || exit 1; done",
     "test": "node --test test/*.test.js",
     "test:e2e": "python3 test/e2e.py",
     "bots": "node test/bots.js"

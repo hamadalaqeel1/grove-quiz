@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e6f5e8">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Usage | Grove</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/figtree.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/host"><span id="brand-mark"></span>Grove</a>
+    <div class="topbar-meta" id="meta"></div>
+  </header>
+  <main id="main" tabindex="-1">
+    <div class="stats-wrap" id="stats" aria-busy="true">
+      <div class="status-block">
+        <span class="spinner" aria-hidden="true"></span>
+        <p class="lead" role="status">Loading usage&hellip;</p>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="/js/stats.js"></script>
+</body>
+</html>

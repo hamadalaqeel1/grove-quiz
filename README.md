@@ -66,6 +66,20 @@ Adds 20 simulated players who answer at random.
   players and close it. Rooms expire after 3 hours idle, 1 hour after the final
   results, or 30 minutes after the host leaves for good.
 
+## Usage stats
+
+Open `/stats` (for example `https://grove-quiz.onrender.com/stats`) to see
+players online, open rooms, games in progress, visitors, page views, players
+joined, games played and an hourly traffic chart for the last 24 hours. It
+refreshes every 10 seconds and shows counts only: no player names, room codes
+or IP addresses.
+
+The page is public but unlinked. To lock it, set a `STATS_KEY` environment
+variable on the server and open `/stats?key=<your key>`.
+
+Counts live in memory, so they start over when the server restarts,
+redeploys, or (on Render's free plan) sleeps after ~15 minutes without visitors.
+
 ## Tests
 
 ```bash
@@ -92,6 +106,7 @@ other than the one the host opens.
 | `PORT` | `3000` | Port to listen on |
 | `HOST` | `0.0.0.0` | Interface to bind |
 | `PUBLIC_URL` | (request host) | Base URL used in join links and QR codes |
+| `STATS_KEY` | (unset) | If set, `/stats` requires `?key=` with this value |
 
 **Render**: push this folder to a Git repo, then in Render choose
 New › Blueprint and select the repo (`render.yaml` is included). Or create a Web

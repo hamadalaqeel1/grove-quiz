@@ -3,12 +3,14 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import express from 'express';
 import QRCode from 'qrcode';
 import { Server } from 'socket.io';
 import { ROOM_CODE_PATTERN } from '../public/js/rules.js';
 import { attachRealtime } from './realtime.js';
 import { RoomManager } from './rooms.js';
+import { liveCounts, Stats } from './stats.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(here, '..', 'public');
@@ -36,7 +38,20 @@ export function lanUrls(port) {
   return urls;
 }
 
-export function createGroveServer({ publicUrl = process.env.PUBLIC_URL, manager = new RoomManager(), sweepIntervalMs } = {}) {
+function keyMatches(given, expected) {
+  if (typeof given !== 'string') return false;
+  const a = crypto.createHash('sha256').update(given).digest();
+  const b = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+export function createGroveServer({
+  publicUrl = process.env.PUBLIC_URL,
+  statsKey = process.env.STATS_KEY,
+  manager = new RoomManager(),
+  stats = new Stats(),
+  sweepIntervalMs,
+} = {}) {
   const configuredBase = publicUrl ? publicUrl.replace(/\/+$/, '') : null;
 
   const baseUrlFromParts = (proto, host) => configuredBase ?? `${proto}://${host}`;
@@ -120,12 +135,24 @@ export function createGroveServer({ publicUrl = process.env.PUBLIC_URL, manager 
     });
   });
 
-  const sendPage = (file) => (req, res) => {
+  // Usage numbers. Public unless STATS_KEY is set, in which case the key must
+  // be passed as ?key=... or an X-Stats-Key header.
+  app.get('/api/stats', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (statsKey && !keyMatches(req.get('x-stats-key') ?? req.query.key, statsKey)) {
+      return res.status(401).json({ ok: false, error: 'stats_locked' });
+    }
+    return res.json({ ok: true, ...stats.snapshot(liveCounts(manager)) });
+  });
+
+  const sendPage = (file, { count = true } = {}) => (req, res) => {
+    if (count) stats.recordPageView(req.ip, req.get('user-agent'));
     res.set('Cache-Control', 'no-cache');
     res.sendFile(path.join(publicDir, file));
   };
   app.get(['/', '/join', '/join/:code'], sendPage('index.html'));
   app.get('/host', sendPage('host.html'));
+  app.get('/stats', sendPage('stats.html', { count: false }));
 
   app.use('/fonts', express.static(path.join(publicDir, 'fonts'), { maxAge: '7d', immutable: true }));
   app.use(express.static(publicDir, { index: false, maxAge: 0 }));
@@ -150,6 +177,7 @@ export function createGroveServer({ publicUrl = process.env.PUBLIC_URL, manager 
 
   const realtime = attachRealtime(io, manager, {
     sweepIntervalMs,
+    stats,
     baseUrlForSocket(socket) {
       const headers = socket.handshake.headers;
       const proto = cleanProto(headers['x-forwarded-proto'], socket.handshake.secure ? 'https' : 'http');
@@ -162,6 +190,7 @@ export function createGroveServer({ publicUrl = process.env.PUBLIC_URL, manager 
     io,
     httpServer,
     manager,
+    stats,
     listen(port = 0, host = '0.0.0.0') {
       return new Promise((resolve) => {
         httpServer.listen(port, host, () => resolve(httpServer.address().port));
